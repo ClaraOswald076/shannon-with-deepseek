@@ -216,7 +216,7 @@ function classifySdkError(sdkError: SDKAssistantMessageError, authType: string):
     case 'billing_error':
       return err(
         new PentestError(
-          `Anthropic account has a billing issue. Add credits or check your billing dashboard.`,
+          `AI provider account has a billing issue. Add credits or check your billing dashboard.`,
           'billing',
           true,
           { authType, sdkError },
@@ -226,7 +226,7 @@ function classifySdkError(sdkError: SDKAssistantMessageError, authType: string):
     case 'rate_limit':
       return err(
         new PentestError(
-          `Anthropic rate limit or spending cap reached. Wait a few minutes and try again.`,
+          `AI provider rate limit or spending cap reached. Wait a few minutes and try again.`,
           'billing',
           true,
           { authType, sdkError },
@@ -235,7 +235,7 @@ function classifySdkError(sdkError: SDKAssistantMessageError, authType: string):
       );
     case 'server_error':
       return err(
-        new PentestError(`Anthropic API is temporarily unavailable. Try again shortly.`, 'network', true, {
+        new PentestError(`AI provider API is temporarily unavailable. Try again shortly.`, 'network', true, {
           authType,
           sdkError,
         }),
@@ -267,7 +267,17 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
   if (apiKey) {
     process.env.ANTHROPIC_API_KEY = apiKey;
   }
-  // 1. Custom base URL — validate endpoint is reachable via SDK query
+  // 1. DeepSeek — set up base URL + auth token from DEEPSEEK_API_KEY, then validate via SDK
+  if (process.env.DEEPSEEK_API_KEY) {
+    if (!process.env.ANTHROPIC_BASE_URL) {
+      process.env.ANTHROPIC_BASE_URL = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+    }
+    if (!process.env.ANTHROPIC_AUTH_TOKEN) {
+      process.env.ANTHROPIC_AUTH_TOKEN = process.env.DEEPSEEK_API_KEY;
+    }
+  }
+
+  // 2. Custom base URL — validate endpoint is reachable via SDK query
   if (process.env.ANTHROPIC_BASE_URL && process.env.ANTHROPIC_AUTH_TOKEN) {
     const baseUrl = process.env.ANTHROPIC_BASE_URL;
     logger.info('Validating custom base URL');
@@ -298,7 +308,7 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
     }
   }
 
-  // 2. Bedrock mode — validate required AWS credentials are present
+  // 3. Bedrock mode — validate required AWS credentials are present
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') {
     const required = [
       'AWS_REGION',
@@ -323,7 +333,7 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
     return ok(undefined);
   }
 
-  // 3. Vertex AI mode — validate required GCP credentials are present
+  // 4. Vertex AI mode — validate required GCP credentials are present
   if (process.env.CLAUDE_CODE_USE_VERTEX === '1') {
     const required = [
       'CLOUD_ML_REGION',
@@ -374,11 +384,11 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
     return ok(undefined);
   }
 
-  // 4. Check that at least one credential is present
+  // 5. Check that at least one credential is present
   if (!process.env.ANTHROPIC_API_KEY && !process.env.CLAUDE_CODE_OAUTH_TOKEN && !process.env.ANTHROPIC_AUTH_TOKEN) {
     return err(
       new PentestError(
-        'No API credentials found. Set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN in .env (or use CLAUDE_CODE_USE_BEDROCK=1 for AWS Bedrock, or CLAUDE_CODE_USE_VERTEX=1 for Google Vertex AI)',
+        'No API credentials found. Set DEEPSEEK_API_KEY or ANTHROPIC_API_KEY in .env (or use CLAUDE_CODE_USE_BEDROCK=1 for AWS Bedrock, or CLAUDE_CODE_USE_VERTEX=1 for Google Vertex AI)',
         'config',
         false,
         {},
@@ -387,7 +397,7 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
     );
   }
 
-  // 5. Validate via SDK query
+  // 6. Validate via SDK query
   const authType = process.env.CLAUDE_CODE_OAUTH_TOKEN ? 'OAuth token' : 'API key';
   logger.info(`Validating ${authType} via SDK...`);
 
@@ -410,7 +420,7 @@ async function validateCredentials(logger: ActivityLogger, apiKey?: string, prov
     return err(
       new PentestError(
         retryable
-          ? `Failed to reach Anthropic API. Check your network connection.`
+          ? `Failed to reach AI provider API. Check your network connection.`
           : `${authType} validation failed: ${message}`,
         retryable ? 'network' : 'config',
         retryable,
