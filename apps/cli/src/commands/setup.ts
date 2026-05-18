@@ -13,7 +13,7 @@ import { type ShannonConfig, saveConfig } from '../config/writer.js';
 
 const SHANNON_HOME = path.join(os.homedir(), '.shannon');
 
-type Provider = 'anthropic' | 'custom_base_url' | 'bedrock' | 'vertex';
+type Provider = 'anthropic' | 'custom_base_url' | 'deepseek' | 'bedrock' | 'vertex';
 
 export async function setup(): Promise<void> {
   p.intro('Shannon Setup');
@@ -22,7 +22,8 @@ export async function setup(): Promise<void> {
   const provider = await p.select({
     message: 'Select your AI provider',
     options: [
-      { value: 'anthropic' as const, label: 'Claude Direct', hint: 'recommended' },
+      { value: 'deepseek' as const, label: 'DeepSeek', hint: 'recommended' },
+      { value: 'anthropic' as const, label: 'Claude Direct' },
       { value: 'custom_base_url' as const, label: 'Custom Base URL', hint: 'proxies, gateways' },
       { value: 'bedrock' as const, label: 'Claude via AWS Bedrock' },
       { value: 'vertex' as const, label: 'Claude via Google Vertex AI' },
@@ -32,7 +33,7 @@ export async function setup(): Promise<void> {
 
   const config = await setupProvider(provider as Provider);
 
-  // 2. Adaptive thinking
+  // 2. Adaptive thinking (only for Claude/Opus models)
   await maybePromptAdaptiveThinking(config);
 
   // 3. Save config
@@ -45,6 +46,8 @@ export async function setup(): Promise<void> {
 
 async function setupProvider(provider: Provider): Promise<ShannonConfig> {
   switch (provider) {
+    case 'deepseek':
+      return setupDeepSeek();
     case 'anthropic':
       return setupAnthropic();
     case 'custom_base_url':
@@ -106,6 +109,51 @@ async function setupAnthropic(): Promise<ShannonConfig> {
     const large = await p.text({
       message: 'Large model ID',
       initialValue: 'claude-opus-4-7',
+      validate: required('Large model ID is required'),
+    });
+    if (p.isCancel(large)) return cancelAndExit();
+
+    config.models = { small, medium, large };
+  }
+
+  return config;
+}
+
+async function setupDeepSeek(): Promise<ShannonConfig> {
+  const apiKey = await promptSecret('Enter your DeepSeek API key');
+
+  const config: ShannonConfig = {
+    deepseek: { api_key: apiKey },
+  };
+
+  const customizeModels = await p.confirm({
+    message:
+      'Do you want to change the default models?\n' +
+      '    Small  - deepseek-chat\n' +
+      '    Medium - deepseek-v4-pro\n' +
+      '    Large  - deepseek-v4-pro',
+    initialValue: false,
+  });
+  if (p.isCancel(customizeModels)) return cancelAndExit();
+
+  if (customizeModels) {
+    const small = await p.text({
+      message: 'Small model ID',
+      initialValue: 'deepseek-chat',
+      validate: required('Small model ID is required'),
+    });
+    if (p.isCancel(small)) return cancelAndExit();
+
+    const medium = await p.text({
+      message: 'Medium model ID',
+      initialValue: 'deepseek-v4-pro',
+      validate: required('Medium model ID is required'),
+    });
+    if (p.isCancel(medium)) return cancelAndExit();
+
+    const large = await p.text({
+      message: 'Large model ID',
+      initialValue: 'deepseek-v4-pro',
       validate: required('Large model ID is required'),
     });
     if (p.isCancel(large)) return cancelAndExit();
