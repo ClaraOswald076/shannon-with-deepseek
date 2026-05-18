@@ -11,6 +11,8 @@ import { getMode } from './mode.js';
 
 /** Environment variables forwarded to worker containers. */
 const FORWARD_VARS = [
+  'DEEPSEEK_API_KEY',
+  'DEEPSEEK_BASE_URL',
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_BASE_URL',
   'ANTHROPIC_AUTH_TOKEN',
@@ -62,7 +64,7 @@ export function buildEnvFlags(): string[] {
 interface CredentialValidation {
   valid: boolean;
   error?: string;
-  mode: 'api-key' | 'oauth' | 'custom-base-url' | 'bedrock' | 'vertex';
+  mode: 'api-key' | 'oauth' | 'custom-base-url' | 'bedrock' | 'vertex' | 'deepseek';
 }
 
 /** Check if a custom Anthropic-compatible base URL is configured. */
@@ -70,12 +72,22 @@ function isCustomBaseUrlConfigured(): boolean {
   return !!(process.env.ANTHROPIC_BASE_URL && process.env.ANTHROPIC_AUTH_TOKEN);
 }
 
+/** Check if DeepSeek is configured. */
+function isDeepSeekConfigured(): boolean {
+  return !!process.env.DEEPSEEK_API_KEY;
+}
+
 /** Detect which providers are configured via environment variables. */
 function detectProviders(): string[] {
   const providers: string[] = [];
-  if (process.env.ANTHROPIC_API_KEY) providers.push('Anthropic API key');
-  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) providers.push('Anthropic OAuth');
-  if (isCustomBaseUrlConfigured()) providers.push('Custom Base URL');
+  if (isDeepSeekConfigured()) {
+    providers.push('DeepSeek');
+    // DeepSeek takes priority — skip Custom Base URL detection since they share the same mechanism
+  } else {
+    if (process.env.ANTHROPIC_API_KEY) providers.push('Anthropic API key');
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN) providers.push('Anthropic OAuth');
+    if (isCustomBaseUrlConfigured()) providers.push('Custom Base URL');
+  }
   if (process.env.CLAUDE_CODE_USE_BEDROCK === '1') providers.push('AWS Bedrock');
   if (process.env.CLAUDE_CODE_USE_VERTEX === '1') providers.push('Google Vertex');
   return providers;
@@ -95,6 +107,9 @@ export function validateCredentials(): CredentialValidation {
     };
   }
 
+  if (isDeepSeekConfigured()) {
+    return { valid: true, mode: 'deepseek' };
+  }
   if (process.env.ANTHROPIC_API_KEY) {
     return { valid: true, mode: 'api-key' };
   }
