@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-AI-powered penetration testing agent for defensive security analysis. Automates vulnerability assessment by combining reconnaissance tools with AI-powered code analysis.
+AI-powered penetration testing agent for defensive security analysis. Automates vulnerability assessment by combining reconnaissance tools with AI-powered code analysis. (DeepSeek Edition — defaults to DeepSeek models and API.)
 
 ## Commands
 
@@ -28,7 +28,7 @@ Mode auto-detection: local mode activates when env var `SHANNON_LOCAL=1` is set 
 npx @keygraph/shannon setup
 
 # Or export env vars directly (non-interactive / CI)
-export ANTHROPIC_API_KEY=your-key
+export DEEPSEEK_API_KEY=your-key
 
 # Run
 npx @keygraph/shannon start -u <url> -r /path/to/repo
@@ -38,7 +38,7 @@ npx @keygraph/shannon start -u <url> -r /path/to/repo
 
 ```bash
 # Setup
-echo "ANTHROPIC_API_KEY=your-key" > .env
+echo "DEEPSEEK_API_KEY=your-key" > .env
 
 # Build (auto-runs if image missing)
 ./shannon build
@@ -146,7 +146,7 @@ Durable workflow orchestration with crash recovery, queryable progress, intellig
 ### Supporting Systems
 - **Configuration** — YAML configs in `apps/worker/configs/` with JSON Schema validation (`config-schema.json`). Supports auth settings (MFA/TOTP), URL/code rule scoping (`rules.avoid`/`rules.focus`), run-scope steering (`vuln_classes`, `exploit`), free-form `rules_of_engagement`, and post-hoc `report` filters (`min_severity`, `min_confidence`, `guidance`). `code_path` avoid rules are written into `~/.claude/settings.json` `permissions.deny` (`Read`/`Edit`) once per workflow by `apps/worker/src/temporal/activities.ts:syncCodePathDenyRules` so the SDK enforces them at the tool layer even in `bypassPermissions` mode. `vuln_classes`/`exploit` scope is locked into `session.json` on first run; resumes with a different scope fail fast (`persistOrValidateRunScope`). Credential resolution — local mode: env vars → `./.env`; npx mode: env vars → `~/.shannon/config.toml` (via `shn setup`)
 - **Prompts** — Per-phase templates in `apps/worker/prompts/` with variable substitution (`{{TARGET_URL}}`, `{{CONFIG_CONTEXT}}`). Shared partials in `apps/worker/prompts/shared/` via `apps/worker/src/services/prompt-manager.ts`, including `_code-path-rules.txt` (focus/avoid `[FILE]`/`[GLOB]` routing) and `_rules-of-engagement.txt` (free-text engagement rules). When `exploit: false`, `apps/worker/src/services/findings-renderer.ts` deterministically converts each `*_exploitation_queue.json` into a `*_findings.md` for report assembly — no LLM in the loop
-- **SDK Integration** — Uses `@anthropic-ai/claude-agent-sdk` with `maxTurns: 10_000` and `bypassPermissions` mode. Adaptive thinking is enabled by default on Opus 4.6/4.7 (`supportsAdaptiveThinking` in `apps/worker/src/ai/models.ts`); disable per-scan via `CLAUDE_ADAPTIVE_THINKING=false` (env) or `core.adaptive_thinking = false` (npx TOML). Browser automation via `playwright-cli` with session isolation (`-s=<session>`). TOTP generation via `generate-totp` CLI tool. Login flow template at `apps/worker/prompts/shared/login-instructions.txt` supports form, SSO, API, and basic auth
+- **SDK Integration** — Uses `@anthropic-ai/claude-agent-sdk` with `maxTurns: 10_000` and `bypassPermissions` mode. Routes through DeepSeek's Anthropic-compatible API by default (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` derived from `DEEPSEEK_API_KEY`). Adaptive thinking is disabled (DeepSeek models do not support it). Browser automation via `playwright-cli` with session isolation (`-s=<session>`). TOTP generation via `generate-totp` CLI tool. Login flow template at `apps/worker/prompts/shared/login-instructions.txt` supports form, SSO, API, and basic auth
 - **Audit System** — Crash-safe append-only logging in `workspaces/{hostname}_{sessionId}/`. Tracks session metrics, per-agent logs, prompts, and deliverables. WorkflowLogger (`apps/worker/src/audit/workflow-logger.ts`) provides unified human-readable per-workflow logs, backed by LogStream (`apps/worker/src/audit/log-stream.ts`) shared stream primitive
 - **Deliverables** — Saved to `deliverables/` in the target repo via the `save-deliverable` CLI script (`apps/worker/src/scripts/save-deliverable.ts`)
 - **Workspaces & Resume** — Named workspaces via `-w <name>` or auto-named from URL+timestamp. Resume detects completed agents via `session.json`. `loadResumeState()` in `apps/worker/src/temporal/activities.ts` validates deliverable existence, restores git checkpoints, and cleans up incomplete deliverables. Workspace listing via `apps/worker/src/temporal/workspaces.ts`

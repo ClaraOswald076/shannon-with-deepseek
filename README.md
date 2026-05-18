@@ -5,12 +5,14 @@
 
 <img src="./assets/github-banner.png" alt="Shannon — AI Pentester for Web Applications and APIs" width="100%">
 
-# Shannon — AI Pentester by Keygraph
+# Shannon — AI Pentester (DeepSeek Edition)
 
-<a href="https://trendshift.io/repositories/15604" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15604" alt="KeygraphHQ%2Fshannon | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+> 基于 [KeygraphHQ/shannon](https://github.com/KeygraphHQ/shannon) 的改版，将底层 AI 模型从 Claude 替换为 DeepSeek。
 
 Shannon is an autonomous, white-box AI pentester for web applications and APIs. <br />
 It analyzes your source code, identifies attack vectors, and executes real exploits to prove vulnerabilities before they reach production.
+
+**本版本默认使用 DeepSeek 模型**（通过 DeepSeek 的 Anthropic 兼容 API），也保留了原始 Claude/Anthropic 的支持。
 
 ---
 
@@ -138,7 +140,8 @@ Shannon Pro supports a self-hosted runner model (similar to GitHub Actions self-
 - **Node.js 18+** - Required for `npx` usage ([Install Node.js](https://nodejs.org/))
 - **pnpm** - Required for Clone and Build mode ([Install pnpm](https://pnpm.io/installation))
 - **AI Provider Credentials** (choose one):
-  - **Anthropic API key** (recommended) - Get from [Anthropic Console](https://console.anthropic.com)
+  - **DeepSeek API key** (recommended, default) - Get from [DeepSeek Platform](https://platform.deepseek.com)
+  - **Anthropic API key** - Get from [Anthropic Console](https://console.anthropic.com)
   - **Claude Code OAuth token**
   - **AWS Bedrock** - Route through Amazon Bedrock with AWS credentials (see [AWS Bedrock](#aws-bedrock))
   - **Google Vertex AI** - Route through Google Cloud Vertex AI (see [Google Vertex AI](#google-vertex-ai))
@@ -155,8 +158,8 @@ Shannon Pro supports a self-hosted runner model (similar to GitHub Actions self-
 # 1. Configure credentials (interactive wizard — one-time setup)
 npx @keygraph/shannon setup
 
-# Or export env vars directly
-export ANTHROPIC_API_KEY=your-api-key
+# Or export env vars directly (DeepSeek)
+export DEEPSEEK_API_KEY=your-deepseek-key
 
 # 2. Run a pentest
 npx @keygraph/shannon start -u https://your-app.com -r /path/to/your-repo
@@ -169,20 +172,20 @@ Shannon will pull the worker image from Docker Hub, start the infrastructure, an
 Use this if you want to run Shannon from a local clone, modify Shannon itself, or keep the worker image built locally.
 
 ```bash
-# 1. Clone Shannon
-git clone https://github.com/KeygraphHQ/shannon.git
+# 1. Clone the DeepSeek Edition
+git clone <your-fork-url>
 cd shannon
 
 # 2. Configure credentials (choose one method)
 
-# Option A: Create a .env file
+# Option A: Create a .env file (DeepSeek default)
 cat > .env << 'EOF'
-ANTHROPIC_API_KEY=your-api-key
+DEEPSEEK_API_KEY=your-deepseek-key
 CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 EOF
 
 # Option B: Export environment variables
-export ANTHROPIC_API_KEY="your-api-key"              # or CLAUDE_CODE_OAUTH_TOKEN
+export DEEPSEEK_API_KEY="your-deepseek-key"
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000           # recommended
 
 # 3. Install dependencies and build
@@ -348,12 +351,12 @@ npx @keygraph/shannon workspaces
 
 **Local mode** resolves credentials from:
 
-1. **Environment variables** - `export ANTHROPIC_API_KEY=...`
+1. **Environment variables** - `export DEEPSEEK_API_KEY=...`
 2. **`.env` file** - `./.env`
 
 **npx mode** uses TOML instead of `.env`:
 
-1. **Environment variables** - `export ANTHROPIC_API_KEY=...`
+1. **Environment variables** - `export DEEPSEEK_API_KEY=...`
 2. **`~/.shannon/config.toml`** - created by `npx @keygraph/shannon setup`
 
 Environment variables always win, so you can override saved config for a single session without editing files.
@@ -449,12 +452,19 @@ npx @keygraph/shannon start -u https://example.com -r /path/to/repo -c ./my-app-
 
 If your application uses two-factor authentication, simply add the TOTP secret to your config file. The AI will automatically generate the required codes during testing.
 
-#### Adaptive Thinking (Opus 4.6/4.7)
+#### Adaptive Thinking
 
-Claude decides when and how deeply to reason on Opus 4.6 and 4.7. Enabled by default whenever a tier resolves to one of these models.
+Adaptive thinking (Claude Opus 4.6/4.7 feature) is **disabled** in this edition — DeepSeek models do not support it.
 
-- **npx mode** — `npx @keygraph/shannon setup` prompts you during the wizard.
-- **Local mode** — set `CLAUDE_ADAPTIVE_THINKING=false` in `.env` (or as an exported env var) to disable.
+#### Default Models
+
+| Tier | Default Model |
+|------|---------------|
+| Small | `deepseek-chat` |
+| Medium | `deepseek-v4-pro` |
+| Large | `deepseek-v4-pro` |
+
+Override via `ANTHROPIC_SMALL_MODEL` / `ANTHROPIC_MEDIUM_MODEL` / `ANTHROPIC_LARGE_MODEL` env vars.
 
 #### Subscription Plan Rate Limits
 
@@ -838,7 +848,7 @@ Shannon is designed for legitimate security auditing purposes only.
 #### **3. LLM & Automation Caveats**
 
 - **Verification is Required**: While significant engineering has gone into our "proof-by-exploitation" methodology to eliminate false positives, the underlying LLMs can still generate hallucinated or weakly-supported content in the final report. **Human oversight is essential** to validate the legitimacy and severity of all reported findings.
-- **Model Support**: Shannon is officially supported only with **Claude models**. Our evaluations, internal testing, and agent harness are all optimized for Claude. Smaller or alternative models — including non-Claude models routed through a proxy — may not reliably follow Shannon's instructions or tool-use constraints, and are not officially supported.
+- **Model Support**: This DeepSeek Edition is optimized for **DeepSeek models** (via DeepSeek's Anthropic-compatible API). Claude models remain supported as a fallback. Non-DeepSeek/Claude models routed through a proxy may not reliably follow Shannon's instructions or tool-use constraints, and are not officially supported.
 - **Comprehensiveness**: The analysis in Shannon Lite may not be exhaustive due to the inherent limitations of LLM context windows. For a more comprehensive, graph-based analysis of your entire codebase, **Shannon Pro** leverages its advanced data flow analysis engine to ensure deeper and more thorough coverage.
 
 #### **4. Scope of Analysis**
