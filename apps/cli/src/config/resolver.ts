@@ -42,6 +42,10 @@ const CONFIG_MAP: readonly ConfigMapping[] = [
   { env: 'ANTHROPIC_VERTEX_PROJECT_ID', toml: 'vertex.project_id', type: 'string' },
   { env: 'GOOGLE_APPLICATION_CREDENTIALS', toml: 'vertex.key_path', type: 'string' },
 
+  // DeepSeek
+  { env: 'DEEPSEEK_API_KEY', toml: 'deepseek.api_key', type: 'string' },
+  { env: 'DEEPSEEK_BASE_URL', toml: 'deepseek.base_url', type: 'string' },
+
   // Custom Base URL
   { env: 'ANTHROPIC_BASE_URL', toml: 'custom_base_url.base_url', type: 'string' },
   { env: 'ANTHROPIC_AUTH_TOKEN', toml: 'custom_base_url.auth_token', type: 'string' },
@@ -145,6 +149,13 @@ function validateProviderFields(config: TOMLConfig, provider: string, errors: st
       break;
     }
 
+    case 'deepseek': {
+      if (!keys.includes('api_key')) {
+        errors.push('[deepseek] requires api_key');
+      }
+      break;
+    }
+
     case 'bedrock': {
       const required = ['use', 'region', 'token'];
       const missing = required.filter((k) => !keys.includes(k));
@@ -227,7 +238,7 @@ function validateConfig(config: TOMLConfig): string[] {
   }
 
   // 4. Only one provider section allowed (ignore empty sections)
-  const PROVIDER_SECTIONS = ['anthropic', 'custom_base_url', 'bedrock', 'vertex'] as const;
+  const PROVIDER_SECTIONS = ['anthropic', 'custom_base_url', 'deepseek', 'bedrock', 'vertex'] as const;
   const present = PROVIDER_SECTIONS.filter((s) => {
     const section = config[s];
     return section && typeof section === 'object' && Object.keys(section).length > 0;
