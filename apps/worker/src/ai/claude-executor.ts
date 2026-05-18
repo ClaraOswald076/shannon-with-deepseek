@@ -167,6 +167,14 @@ export async function runClaudePrompt(
   // 3a. Apply structured provider config directly to sdkEnv (no process.env mutation)
   if (providerConfig) {
     switch (providerConfig.providerType) {
+      case 'deepseek': {
+        // DeepSeek Anthropic-compatible API — route via base URL + auth token
+        const dsBaseUrl = providerConfig.baseUrl || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+        const dsAuthToken = providerConfig.authToken || providerConfig.apiKey || process.env.DEEPSEEK_API_KEY || '';
+        sdkEnv.ANTHROPIC_BASE_URL = dsBaseUrl;
+        sdkEnv.ANTHROPIC_AUTH_TOKEN = dsAuthToken;
+        break;
+      }
       case 'bedrock':
         sdkEnv.CLAUDE_CODE_USE_BEDROCK = '1';
         if (providerConfig.awsRegion) sdkEnv.AWS_REGION = providerConfig.awsRegion;

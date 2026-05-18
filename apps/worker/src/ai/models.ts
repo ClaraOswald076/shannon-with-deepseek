@@ -8,20 +8,20 @@
  * Model tier definitions and resolution.
  *
  * Three tiers mapped to capability levels:
- * - "small"  (Haiku — summarization, structured extraction)
- * - "medium" (Sonnet — tool use, general analysis)
- * - "large"  (Opus — deep reasoning, complex analysis)
+ * - "small"  (cheaper model — summarization, structured extraction)
+ * - "medium" (primary model — tool use, general analysis)
+ * - "large"  (most capable — deep reasoning, complex analysis)
  *
- * Users override via ANTHROPIC_SMALL_MODEL / ANTHROPIC_MEDIUM_MODEL / ANTHROPIC_LARGE_MODEL,
- * which works across all providers (direct, Bedrock, Vertex).
+ * Defaults to DeepSeek models. Users override via ANTHROPIC_SMALL_MODEL /
+ * ANTHROPIC_MEDIUM_MODEL / ANTHROPIC_LARGE_MODEL, which works across all providers.
  */
 
 export type ModelTier = 'small' | 'medium' | 'large';
 
 const DEFAULT_MODELS: Readonly<Record<ModelTier, string>> = {
-  small: 'claude-haiku-4-5-20251001',
-  medium: 'claude-sonnet-4-6',
-  large: 'claude-opus-4-7',
+  small: 'deepseek-chat',
+  medium: 'deepseek-v4-pro',
+  large: 'deepseek-v4-pro',
 };
 
 /** Resolve a model tier to a concrete model ID. */
@@ -36,7 +36,7 @@ export function resolveModel(tier: ModelTier = 'medium'): string {
   }
 }
 
-/** Whether a model supports adaptive thinking. Opus 4.6 and 4.7 only. */
-export function supportsAdaptiveThinking(model: string): boolean {
-  return /opus-4-[67]/.test(model);
+/** DeepSeek models do not support Claude's adaptive thinking feature. */
+export function supportsAdaptiveThinking(_model: string): boolean {
+  return false;
 }
